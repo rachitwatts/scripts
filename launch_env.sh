@@ -1,9 +1,9 @@
 function launch_env {
-  playbook_runner="XXXXXX";
-  playbook_name="YYYYYY";
-  ansible_location=$HOME/loc/to/ansible;
+	playbook_runner="XXXXXX";
+	playbook_name="YYYYYY";
+	ansible_location=$HOME/loc/to/ansible;
 	
-  cd $ansible_location;
+  	cd $ansible_location;
 	source ve/bin/activate;
 	ips=($(./$playbook_runner -i environments/$1 $playbook_name --list-host | egrep "\b(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b" | awk '{$1=$1};1' | tr '\n' ' '));
 	osascript -e 'on run ipList
