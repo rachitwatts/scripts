@@ -5,15 +5,17 @@
 /**
  * Instapaper Reading Queue — Scriptable Widget
  *
- * Shows your unread article count and estimated reading time.
- * Tapping the widget opens a random unread article in Instapaper.
+ * Displays a random unread article (image + title). Tapping the
+ * widget opens that article in Instapaper. A separator at the
+ * bottom shows how many unread articles remain and the estimated
+ * total reading time.
  *
  * SETUP
  * -----
  * 1. Request an API consumer key at:
  *    https://www.instapaper.com/main/request_oauth_consumer_token
  * 2. Once approved, paste your key and secret into the CONFIG section below.
- * 3. Run this script inside the Scriptable app to log in with your
+ * 3. Run this script once inside the Scriptable app to log in with your
  *    Instapaper email & password (credentials are exchanged for an OAuth
  *    token via xAuth and are never stored).
  * 4. Add a Small or Medium Scriptable widget to your home screen and
@@ -39,8 +41,9 @@ const CACHE_MINUTES = 15;
 const KC_TOKEN  = "instapaper_oauth_token";
 const KC_SECRET = "instapaper_oauth_secret";
 
-// Local cache filename.
-const CACHE_FILE = "instapaper_cache.json";
+// Local cache filenames.
+const CACHE_FILE    = "instapaper_cache.json";
+const FEATURED_IMG  = "instapaper_featured.png";
 
 // ────────────────────────────────────────────────────
 // SHA-1 (pure JavaScript — no native crypto needed)
@@ -215,7 +218,6 @@ function buildRequest(endpoint, bodyParams, token, tokenSecret) {
   };
   if (token) oa.oauth_token = token;
 
-  // Signature is computed over *all* params (OAuth + body).
   var all = Object.assign({}, oa, bodyParams || {});
   oa.oauth_signature = oauthSign(
     "POST",
@@ -282,8 +284,6 @@ async function fetchUnreadBookmarks(token, tokenSecret) {
 
   var json = await req.loadJSON();
 
-  // The bookmarks/list endpoint returns { bookmarks: [...] }.
-  // Fall back to filtering an array response by type, just in case.
   if (json && json.bookmarks) return json.bookmarks;
   if (Array.isArray(json))
     return json.filter(function (o) {
@@ -293,44 +293,91 @@ async function fetchUnreadBookmarks(token, tokenSecret) {
 }
 
 // ────────────────────────────────────────────────────
+// Article image (Open Graph)
+// ────────────────────────────────────────────────────
+
+async function fetchArticleImage(articleUrl) {
+  try {
+    var req = new Request(articleUrl);
+    req.timeoutInterval = 8;
+    var html = await req.loadString();
+
+    // Try property-first, then content-first ordering of the og:image tag.
+    var match = html.match(
+      /<meta[^>]*property=["']og:image["'][^>]*content=["']([^"']+)["']/i
+    );
+    if (!match) {
+      match = html.match(
+        /<meta[^>]*content=["']([^"']+)["'][^>]*property=["']og:image["']/i
+      );
+    }
+
+    if (match && match[1]) {
+      var imgUrl = match[1];
+      if (imgUrl.startsWith("//")) imgUrl = "https:" + imgUrl;
+      var imgReq = new Request(imgUrl);
+      imgReq.timeoutInterval = 8;
+      return await imgReq.loadImage();
+    }
+  } catch (e) {
+    // Image fetch is best-effort; widget works without it.
+  }
+  return null;
+}
+
+// ────────────────────────────────────────────────────
 // Local cache (FileManager)
 // ────────────────────────────────────────────────────
 
+function fm() {
+  return FileManager.local();
+}
+
 function cachePath() {
-  var fm = FileManager.local();
-  return fm.joinPath(fm.documentsDirectory(), CACHE_FILE);
+  return fm().joinPath(fm().documentsDirectory(), CACHE_FILE);
+}
+
+function featuredImagePath() {
+  return fm().joinPath(fm().documentsDirectory(), FEATURED_IMG);
 }
 
 function readCache() {
-  var fm = FileManager.local();
   var p = cachePath();
-  if (!fm.fileExists(p)) return null;
+  if (!fm().fileExists(p)) return null;
   try {
-    var data = JSON.parse(fm.readString(p));
+    var data = JSON.parse(fm().readString(p));
     if (Date.now() - data.ts < CACHE_MINUTES * 60 * 1000) return data;
   } catch (e) {
-    /* ignore corrupt cache */
+    /* corrupt */
   }
   return null;
 }
 
 function readStaleCache() {
-  var fm = FileManager.local();
   var p = cachePath();
-  if (!fm.fileExists(p)) return null;
+  if (!fm().fileExists(p)) return null;
   try {
-    return JSON.parse(fm.readString(p));
+    return JSON.parse(fm().readString(p));
   } catch (e) {
     return null;
   }
 }
 
-function writeCache(bookmarks) {
-  var fm = FileManager.local();
-  fm.writeString(
+function writeCache(bookmarks, featuredId) {
+  fm().writeString(
     cachePath(),
-    JSON.stringify({ ts: Date.now(), bookmarks: bookmarks })
+    JSON.stringify({ ts: Date.now(), bookmarks: bookmarks, featuredId: featuredId })
   );
+}
+
+function saveFeaturedImage(img) {
+  if (img) fm().writeImage(featuredImagePath(), img);
+}
+
+function loadFeaturedImage() {
+  var p = featuredImagePath();
+  if (fm().fileExists(p)) return fm().readImage(p);
+  return null;
 }
 
 // ────────────────────────────────────────────────────
@@ -351,6 +398,36 @@ function saveCredentials(token, secret) {
 }
 
 // ────────────────────────────────────────────────────
+// Drawing helpers
+// ────────────────────────────────────────────────────
+
+function createSeparatorImage() {
+  var ctx = new DrawContext();
+  ctx.size = new Size(500, 1);
+  ctx.opaque = false;
+  ctx.setFillColor(new Color("#ffffff", 0.2));
+  ctx.fillRect(new Rect(0, 0, 500, 1));
+  return ctx.getImage();
+}
+
+function createPlaceholderImage() {
+  var ctx = new DrawContext();
+  ctx.size = new Size(200, 120);
+  ctx.opaque = false;
+
+  // Gradient-ish solid placeholder.
+  ctx.setFillColor(new Color("#2d2d5e"));
+  ctx.fillRect(new Rect(0, 0, 200, 120));
+
+  // Book icon in the centre.
+  ctx.setFont(Font.regularSystemFont(36));
+  ctx.setTextColor(new Color("#64ffda", 0.4));
+  ctx.drawTextInRect("\u{1F4D6}", new Rect(72, 36, 60, 48));
+
+  return ctx.getImage();
+}
+
+// ────────────────────────────────────────────────────
 // Widget rendering
 // ────────────────────────────────────────────────────
 
@@ -365,76 +442,113 @@ function pickRandom(arr) {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-async function createWidget(bookmarks) {
+function createWidget(bookmarks, featured, featuredImg) {
   var count = bookmarks.length;
   var totalMin = (count * AVG_WORDS_PER_ARTICLE) / WORDS_PER_MINUTE;
 
-  var w = new ListWidget();
-
-  // ── Colours ──
-  var bg = new Color("#1a1a2e");
+  var bg     = new Color("#1a1a2e");
   var accent = new Color("#64ffda");
-  var muted = new Color("#8892b0");
-  var warm = new Color("#e6c07b");
+  var muted  = new Color("#8892b0");
+  var warm   = new Color("#e6c07b");
 
+  var w = new ListWidget();
   w.backgroundColor = bg;
-  w.setPadding(14, 14, 14, 14);
+  w.setPadding(12, 12, 10, 12);
 
-  // ── Header ──
-  var hdr = w.addText("INSTAPAPER");
-  hdr.font = Font.boldSystemFont(11);
-  hdr.textColor = accent;
+  // ── Empty state ──
+  if (count === 0 || !featured) {
+    var hdr = w.addText("INSTAPAPER");
+    hdr.font = Font.boldSystemFont(11);
+    hdr.textColor = accent;
+    w.addSpacer(null);
+    var empty = w.addText("No unread articles");
+    empty.font = Font.italicSystemFont(13);
+    empty.textColor = Color.white();
+    w.addSpacer(null);
+    w.url = "https://www.instapaper.com";
+    return w;
+  }
 
-  w.addSpacer(4);
+  // ── Determine layout by widget size ──
+  var family = config.widgetFamily || "small";
+  var img = featuredImg || createPlaceholderImage();
+  var title = featured.title || "Untitled";
 
-  // ── Article count ──
-  var num = w.addText(String(count));
-  num.font = Font.boldSystemFont(42);
-  num.textColor = Color.white();
-  num.minimumScaleFactor = 0.5;
+  if (family === "medium" || family === "large") {
+    // ── MEDIUM / LARGE: image on left, text on right ──
+    var topStack = w.addStack();
+    topStack.layoutHorizontally();
+    topStack.spacing = 10;
 
-  var lbl = w.addText(count === 1 ? "unread article" : "unread articles");
-  lbl.font = Font.regularSystemFont(13);
-  lbl.textColor = muted;
+    var imgEl = topStack.addImage(img);
+    imgEl.imageSize = new Size(85, 85);
+    imgEl.cornerRadius = 8;
+    imgEl.applyFillingContentMode();
+
+    var textStack = topStack.addStack();
+    textStack.layoutVertically();
+    textStack.spacing = 4;
+
+    var brandEl = textStack.addText("INSTAPAPER");
+    brandEl.font = Font.boldSystemFont(9);
+    brandEl.textColor = accent;
+
+    var titleEl = textStack.addText(title);
+    titleEl.font = Font.semiboldSystemFont(14);
+    titleEl.textColor = Color.white();
+    titleEl.lineLimit = 3;
+
+    if (featured.description) {
+      var descEl = textStack.addText(featured.description);
+      descEl.font = Font.regularSystemFont(11);
+      descEl.textColor = muted;
+      descEl.lineLimit = 2;
+    }
+
+    textStack.addSpacer(null);
+  } else {
+    // ── SMALL: image on top, title below ──
+    var imgEl = w.addImage(img);
+    imgEl.cornerRadius = 8;
+    imgEl.applyFillingContentMode();
+    imgEl.imageSize = new Size(0, 72);
+
+    w.addSpacer(6);
+
+    var titleEl = w.addText(title);
+    titleEl.font = Font.semiboldSystemFont(12);
+    titleEl.textColor = Color.white();
+    titleEl.lineLimit = 2;
+    titleEl.minimumScaleFactor = 0.8;
+  }
+
+  w.addSpacer(null);
+
+  // ── Separator ──
+  var sepEl = w.addImage(createSeparatorImage());
+  sepEl.imageSize = new Size(0, 1);
+  sepEl.imageOpacity = 1;
 
   w.addSpacer(6);
 
-  // ── Reading-time estimate ──
-  var timeText = w.addText("\u{23F1} ~" + formatTime(totalMin));
-  timeText.font = Font.mediumSystemFont(14);
-  timeText.textColor = warm;
+  // ── Stats bar ──
+  var statsStack = w.addStack();
+  statsStack.layoutHorizontally();
+  statsStack.centerAlignContent();
 
-  w.addSpacer(null); // push remaining content to bottom
+  var countStr = String(count) + (count === 1 ? " article" : " articles");
+  var cEl = statsStack.addText(countStr);
+  cEl.font = Font.mediumSystemFont(11);
+  cEl.textColor = muted;
 
-  // ── Random-article prompt ──
-  if (count > 0) {
-    var random = pickRandom(bookmarks);
+  statsStack.addSpacer(null);
 
-    // Show title preview on medium / large widgets.
-    var family = config.widgetFamily;
-    if (family === "medium" || family === "large") {
-      var title = random.title || "Untitled";
-      if (title.length > 60) title = title.substring(0, 57) + "...";
-      var preview = w.addText(title);
-      preview.font = Font.regularSystemFont(11);
-      preview.textColor = Color.white();
-      preview.lineLimit = 2;
-      w.addSpacer(2);
-    }
+  var tEl = statsStack.addText("\u{23F1} ~" + formatTime(totalMin));
+  tEl.font = Font.mediumSystemFont(11);
+  tEl.textColor = warm;
 
-    var hint = w.addText("Tap to open a random article");
-    hint.font = Font.italicSystemFont(10);
-    hint.textColor = muted;
-    hint.textOpacity = 0.7;
-
-    // Universal link — opens in the Instapaper app when installed.
-    w.url = "https://www.instapaper.com/read/" + random.bookmark_id;
-  } else {
-    var empty = w.addText("Queue is empty!");
-    empty.font = Font.italicSystemFont(11);
-    empty.textColor = accent;
-    w.url = "https://www.instapaper.com";
-  }
+  // ── Tap action → open the featured article ──
+  w.url = "https://www.instapaper.com/read/" + featured.bookmark_id;
 
   return w;
 }
@@ -462,10 +576,32 @@ function createErrorWidget(message) {
 // Entry point
 // ────────────────────────────────────────────────────
 
+async function loadFeaturedData(bookmarks, cachedFeaturedId) {
+  if (bookmarks.length === 0) return { article: null, image: null };
+
+  // Re-use the cached featured article when it is still in the list.
+  var article;
+  if (cachedFeaturedId) {
+    article = bookmarks.find(function (b) {
+      return String(b.bookmark_id) === String(cachedFeaturedId);
+    });
+  }
+
+  if (article) {
+    // Cache hit — reuse locally-stored image.
+    return { article: article, image: loadFeaturedImage() };
+  }
+
+  // Pick a new random article and fetch its image.
+  article = pickRandom(bookmarks);
+  var img = await fetchArticleImage(article.url);
+  saveFeaturedImage(img);
+  return { article: article, image: img };
+}
+
 async function main() {
   // --- Running inside the Scriptable app (not as a widget) ---
   if (!config.runsInWidget) {
-    // Prompt for login if we have no stored token yet.
     if (!hasCredentials()) {
       var alert = new Alert();
       alert.title = "Instapaper Login";
@@ -504,19 +640,22 @@ async function main() {
       }
     }
 
-    // Show a preview of the widget.
     if (hasCredentials()) {
       var cred = getCredentials();
       var bookmarks;
       try {
         bookmarks = await fetchUnreadBookmarks(cred.token, cred.secret);
-        writeCache(bookmarks);
       } catch (e) {
         var stale = readStaleCache();
         bookmarks = stale ? stale.bookmarks : [];
       }
-      var preview = await createWidget(bookmarks);
-      preview.presentSmall();
+
+      var feat = await loadFeaturedData(bookmarks, null);
+      if (feat.article) writeCache(bookmarks, feat.article.bookmark_id);
+      else writeCache(bookmarks, null);
+
+      var preview = createWidget(bookmarks, feat.article, feat.image);
+      preview.presentMedium();
     }
     return;
   }
@@ -531,19 +670,20 @@ async function main() {
 
   var cred = getCredentials();
   var bookmarks;
+  var cachedFeaturedId = null;
 
-  // Prefer a fresh cache to avoid unnecessary API calls.
   var cached = readCache();
   if (cached) {
     bookmarks = cached.bookmarks;
+    cachedFeaturedId = cached.featuredId;
   } else {
     try {
       bookmarks = await fetchUnreadBookmarks(cred.token, cred.secret);
-      writeCache(bookmarks);
     } catch (e) {
       var stale = readStaleCache();
       if (stale) {
         bookmarks = stale.bookmarks;
+        cachedFeaturedId = stale.featuredId;
       } else {
         Script.setWidget(createErrorWidget("Network error"));
         Script.complete();
@@ -552,7 +692,18 @@ async function main() {
     }
   }
 
-  var widget = await createWidget(bookmarks);
+  var feat = await loadFeaturedData(bookmarks, cachedFeaturedId);
+
+  // Persist cache only when we fetched fresh data (no cachedFeaturedId from
+  // a fresh cache hit means we already have valid cache).
+  if (!cached) {
+    writeCache(
+      bookmarks,
+      feat.article ? feat.article.bookmark_id : null
+    );
+  }
+
+  var widget = createWidget(bookmarks, feat.article, feat.image);
   Script.setWidget(widget);
   Script.complete();
 }
