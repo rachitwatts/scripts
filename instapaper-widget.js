@@ -547,8 +547,8 @@ function createWidget(bookmarks, featured, featuredImg) {
   tEl.font = Font.mediumSystemFont(11);
   tEl.textColor = warm;
 
-  // ── Tap action → open the featured article ──
-  w.url = "https://www.instapaper.com/read/" + featured.bookmark_id;
+  // ── Tap action → open Instapaper app ──
+  w.url = "instapaper://";
 
   return w;
 }
