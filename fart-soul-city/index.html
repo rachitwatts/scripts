@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fart Soul City Detector 💨🌍</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --pink: #FF6B9D;
+      --purple: #C44DFF;
+      --yellow: #FFD93D;
+      --green: #6BCB77;
+      --blue: #4D96FF;
+      --orange: #FF8B3D;
+      --bg: #FFF8F0;
+      --dark: #2D1B4E;
+    }
+
+    body {
+      font-family: 'Nunito', sans-serif;
+      background: var(--bg);
+      color: var(--dark);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Floating fart clouds background */
+    .bg-clouds {
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+    .bg-clouds .cloud {
+      position: absolute;
+      font-size: 40px;
+      opacity: 0.12;
+      animation: floatCloud linear infinite;
+    }
+    @keyframes floatCloud {
+      0% { transform: translateX(-80px) translateY(0) rotate(0deg); opacity: 0; }
+      10% { opacity: 0.12; }
+      90% { opacity: 0.12; }
+      100% { transform: translateX(calc(100vw + 80px)) translateY(-120px) rotate(30deg); opacity: 0; }
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      max-width: 520px;
+      margin: 0 auto;
+      padding: 24px 20px 60px;
+      text-align: center;
+    }
+
+    /* Header */
+    .logo-area {
+      margin-bottom: 8px;
+    }
+    .logo-area .fart-emoji {
+      font-size: 64px;
+      display: inline-block;
+      animation: wiggle 2s ease-in-out infinite;
+    }
+    @keyframes wiggle {
+      0%, 100% { transform: rotate(-6deg) scale(1); }
+      50% { transform: rotate(6deg) scale(1.08); }
+    }
+    h1 {
+      font-family: 'Lilita One', cursive;
+      font-size: 2.2rem;
+      line-height: 1.15;
+      background: linear-gradient(135deg, var(--purple), var(--pink), var(--orange));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 6px;
+    }
+    .subtitle {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #8B7AA8;
+      margin-bottom: 32px;
+    }
+
+    /* Cards */
+    .card {
+      background: #fff;
+      border-radius: 24px;
+      padding: 32px 24px;
+      box-shadow: 0 4px 24px rgba(45,27,78,0.08);
+      margin-bottom: 20px;
+    }
+
+    /* Record button */
+    .record-section p {
+      font-size: 0.95rem;
+      color: #8B7AA8;
+      margin-bottom: 20px;
+      font-weight: 600;
+    }
+    .record-btn {
+      width: 160px;
+      height: 160px;
+      border-radius: 50%;
+      border: none;
+      cursor: pointer;
+      position: relative;
+      background: linear-gradient(135deg, var(--pink), var(--purple));
+      color: #fff;
+      font-family: 'Nunito', sans-serif;
+      font-weight: 800;
+      font-size: 1rem;
+      transition: transform 0.2s, box-shadow 0.2s;
+      box-shadow: 0 6px 30px rgba(196,77,255,0.3);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+      margin: 0 auto;
+    }
+    .record-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 8px 40px rgba(196,77,255,0.45);
+    }
+    .record-btn:active {
+      transform: scale(0.97);
+    }
+    .record-btn .btn-emoji {
+      font-size: 48px;
+      line-height: 1;
+    }
+    .record-btn.recording {
+      background: linear-gradient(135deg, #FF4040, var(--orange));
+      animation: pulse 1s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(255,64,64,0.4); }
+      50% { box-shadow: 0 0 0 20px rgba(255,64,64,0); }
+    }
+
+    .timer {
+      margin-top: 16px;
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: var(--purple);
+      min-height: 36px;
+    }
+
+    /* Visualizer */
+    .visualizer-wrap {
+      height: 60px;
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+    }
+    .viz-bar {
+      width: 6px;
+      background: linear-gradient(to top, var(--pink), var(--purple));
+      border-radius: 3px;
+      transition: height 0.05s;
+      height: 6px;
+    }
+
+    /* Analyzing state */
+    .analyzing-section {
+      display: none;
+    }
+    .analyzing-section.active {
+      display: block;
+    }
+    .analyzing-emoji {
+      font-size: 80px;
+      animation: spin 1.5s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin {
+      0% { transform: rotate(0deg) scale(1); }
+      25% { transform: rotate(90deg) scale(1.1); }
+      50% { transform: rotate(180deg) scale(1); }
+      75% { transform: rotate(270deg) scale(1.1); }
+      100% { transform: rotate(360deg) scale(1); }
+    }
+    .analyzing-text {
+      margin-top: 16px;
+      font-weight: 800;
+      font-size: 1.1rem;
+      color: var(--purple);
+    }
+    .analyzing-sub {
+      font-size: 0.85rem;
+      color: #8B7AA8;
+      margin-top: 6px;
+      font-weight: 600;
+    }
+
+    /* Results */
+    .results-section {
+      display: none;
+    }
+    .results-section.active {
+      display: block;
+      animation: fadeUp 0.6s ease-out;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .rating-card {
+      background: linear-gradient(135deg, #FFF3E0, #FFF8F0);
+      border: 2px solid var(--yellow);
+    }
+    .rating-label {
+      font-size: 0.8rem;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      color: #C49A40;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+    .rating-score {
+      font-family: 'Lilita One', cursive;
+      font-size: 4rem;
+      line-height: 1;
+      background: linear-gradient(135deg, var(--orange), var(--pink));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .rating-title {
+      font-weight: 800;
+      font-size: 1.3rem;
+      color: var(--dark);
+      margin-top: 4px;
+    }
+
+    .fart-name {
+      font-family: 'Lilita One', cursive;
+      font-size: 1.6rem;
+      color: var(--purple);
+      margin-bottom: 16px;
+    }
+
+    .praise-roast-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+      margin-top: 16px;
+    }
+    .praise-box, .roast-box {
+      border-radius: 16px;
+      padding: 16px 12px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      line-height: 1.4;
+    }
+    .praise-box {
+      background: linear-gradient(135deg, #E8F5E9, #F1F8E9);
+      border: 2px solid var(--green);
+      color: #2E7D32;
+    }
+    .roast-box {
+      background: linear-gradient(135deg, #FFF3E0, #FFE0B2);
+      border: 2px solid var(--orange);
+      color: #E65100;
+    }
+    .box-label {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 6px;
+      opacity: 0.7;
+    }
+
+    /* Soul City Card */
+    .soul-city-card {
+      background: linear-gradient(135deg, var(--purple), var(--pink));
+      color: #fff;
+      padding: 36px 24px;
+    }
+    .city-emoji {
+      font-size: 72px;
+      display: inline-block;
+      animation: bounce 2s ease-in-out infinite;
+    }
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-12px); }
+    }
+    .soul-city-label {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 3px;
+      opacity: 0.8;
+      margin-bottom: 4px;
+      font-weight: 700;
+    }
+    .soul-city-name {
+      font-family: 'Lilita One', cursive;
+      font-size: 2.2rem;
+      line-height: 1.15;
+      margin-bottom: 12px;
+    }
+    .soul-city-reason {
+      font-size: 0.95rem;
+      opacity: 0.9;
+      font-weight: 600;
+      line-height: 1.5;
+    }
+
+    /* Try again */
+    .try-again-btn {
+      margin-top: 24px;
+      padding: 16px 40px;
+      border-radius: 50px;
+      border: 3px solid var(--purple);
+      background: #fff;
+      color: var(--purple);
+      font-family: 'Nunito', sans-serif;
+      font-weight: 800;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .try-again-btn:hover {
+      background: var(--purple);
+      color: #fff;
+      transform: scale(1.05);
+    }
+
+    /* Share */
+    .share-btn {
+      margin-top: 12px;
+      padding: 14px 36px;
+      border-radius: 50px;
+      border: none;
+      background: linear-gradient(135deg, var(--green), var(--blue));
+      color: #fff;
+      font-family: 'Nunito', sans-serif;
+      font-weight: 800;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .share-btn:hover {
+      transform: scale(1.05);
+      box-shadow: 0 4px 20px rgba(107,203,119,0.4);
+    }
+
+    /* Footer */
+    .footer {
+      margin-top: 40px;
+      font-size: 0.75rem;
+      color: #BBA8D4;
+      font-weight: 600;
+    }
+
+    /* Disclaimer */
+    .disclaimer {
+      margin-top: 12px;
+      font-size: 0.7rem;
+      color: #C8B8DA;
+      font-style: italic;
+    }
+
+    /* Error */
+    .error-msg {
+      display: none;
+      color: #FF4040;
+      font-weight: 700;
+      font-size: 0.9rem;
+      margin-top: 12px;
+    }
+    .error-msg.active {
+      display: block;
+    }
+
+    /* Mobile tweaks */
+    @media (max-width: 400px) {
+      h1 { font-size: 1.8rem; }
+      .record-btn { width: 140px; height: 140px; }
+      .record-btn .btn-emoji { font-size: 40px; }
+      .soul-city-name { font-size: 1.8rem; }
+      .praise-roast-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Floating background clouds -->
+<div class="bg-clouds" id="bgClouds"></div>
+
+<div class="container">
+
+  <!-- Header -->
+  <div class="logo-area">
+    <span class="fart-emoji">💨</span>
+  </div>
+  <h1>What City Does Your Fart Belong To?</h1>
+  <p class="subtitle">The world's most advanced flatulence-to-city AI</p>
+
+  <!-- Record Section -->
+  <div class="card record-section" id="recordSection">
+    <p>Position your device near the source of truth and let it rip 🍑</p>
+    <button class="record-btn" id="recordBtn" onclick="toggleRecording()">
+      <span class="btn-emoji">🎙️</span>
+      <span id="btnLabel">FART NOW</span>
+    </button>
+    <div class="timer" id="timer"></div>
+    <div class="visualizer-wrap" id="visualizer"></div>
+    <div class="error-msg" id="errorMsg"></div>
+  </div>
+
+  <!-- Analyzing Section -->
+  <div class="card analyzing-section" id="analyzingSection">
+    <div class="analyzing-emoji">🧪</div>
+    <p class="analyzing-text" id="analyzingText">Sniffing your sample...</p>
+    <p class="analyzing-sub" id="analyzingSub">Analyzing molecular composition</p>
+  </div>
+
+  <!-- Results Section -->
+  <div class="results-section" id="resultsSection">
+
+    <!-- Fart Name -->
+    <div class="card">
+      <div class="fart-name" id="fartName"></div>
+    </div>
+
+    <!-- Rating -->
+    <div class="card rating-card">
+      <div class="rating-label">Fart Rating</div>
+      <div class="rating-score" id="ratingScore"></div>
+      <div class="rating-title" id="ratingTitle"></div>
+    </div>
+
+    <!-- Praise & Roast -->
+    <div class="card">
+      <div class="praise-roast-grid">
+        <div class="praise-box">
+          <div class="box-label">🌟 The Praise</div>
+          <div id="praiseText"></div>
+        </div>
+        <div class="roast-box">
+          <div class="box-label">🔥 The Roast</div>
+          <div id="roastText"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Soul City -->
+    <div class="card soul-city-card">
+      <div class="city-emoji" id="cityEmoji"></div>
+      <div class="soul-city-label">Your Soul City Is</div>
+      <div class="soul-city-name" id="cityName"></div>
+      <div class="soul-city-reason" id="cityReason"></div>
+    </div>
+
+    <button class="try-again-btn" onclick="resetAll()">💨 Fart Again</button>
+    <br>
+    <button class="share-btn" onclick="shareResult()">📤 Share My Soul City</button>
+  </div>
+
+  <div class="footer">
+    Made with 💨 and questionable life choices<br>
+    <span class="disclaimer">* No actual fart analysis technology exists. This is 100% fake and 100% hilarious. Happy April Fools!</span>
+  </div>
+
+</div>
+
+<script>
+  // ---- Background clouds ----
+  (function spawnClouds() {
+    const el = document.getElementById('bgClouds');
+    const emojis = ['💨','💩','🌬️','☁️','😤','🍑','💨','🌪️'];
+    for (let i = 0; i < 18; i++) {
+      const c = document.createElement('span');
+      c.className = 'cloud';
+      c.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+      c.style.top = (Math.random() * 100) + '%';
+      c.style.left = '-80px';
+      c.style.fontSize = (28 + Math.random() * 40) + 'px';
+      c.style.animationDuration = (14 + Math.random() * 20) + 's';
+      c.style.animationDelay = (Math.random() * 20) + 's';
+      el.appendChild(c);
+    }
+  })();
+
+  // ---- State ----
+  let isRecording = false;
+  let mediaRecorder = null;
+  let audioCtx = null;
+  let analyser = null;
+  let animFrame = null;
+  let timerInterval = null;
+  let startTime = 0;
+
+  // ---- Visualizer setup ----
+  const vizWrap = document.getElementById('visualizer');
+  const BAR_COUNT = 32;
+  for (let i = 0; i < BAR_COUNT; i++) {
+    const bar = document.createElement('div');
+    bar.className = 'viz-bar';
+    vizWrap.appendChild(bar);
+  }
+  const vizBars = vizWrap.querySelectorAll('.viz-bar');
+
+  // ---- Recording ----
+  async function toggleRecording() {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
+    }
+  }
+
+  async function startRecording() {
+    const errEl = document.getElementById('errorMsg');
+    errEl.classList.remove('active');
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const source = audioCtx.createMediaStreamSource(stream);
+      analyser = audioCtx.createAnalyser();
+      analyser.fftSize = 64;
+      source.connect(analyser);
+
+      mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.start();
+
+      isRecording = true;
+      const btn = document.getElementById('recordBtn');
+      btn.classList.add('recording');
+      document.getElementById('btnLabel').textContent = 'STOP';
+      btn.querySelector('.btn-emoji').textContent = '🛑';
+
+      startTime = Date.now();
+      timerInterval = setInterval(updateTimer, 100);
+
+      drawVisualizer();
+
+      // Auto-stop after 10 seconds
+      setTimeout(() => {
+        if (isRecording) stopRecording();
+      }, 10000);
+
+    } catch (e) {
+      errEl.textContent = 'Microphone access needed to detect your fart. Please allow mic access! 🎙️';
+      errEl.classList.add('active');
+    }
+  }
+
+  function stopRecording() {
+    isRecording = false;
+    const btn = document.getElementById('recordBtn');
+    btn.classList.remove('recording');
+    document.getElementById('btnLabel').textContent = 'FART NOW';
+    btn.querySelector('.btn-emoji').textContent = '🎙️';
+
+    clearInterval(timerInterval);
+    cancelAnimationFrame(animFrame);
+
+    // Reset viz bars
+    vizBars.forEach(b => b.style.height = '6px');
+
+    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+      mediaRecorder.stop();
+      mediaRecorder.stream.getTracks().forEach(t => t.stop());
+    }
+    if (audioCtx) {
+      audioCtx.close();
+      audioCtx = null;
+    }
+
+    showAnalyzing();
+  }
+
+  function updateTimer() {
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+    document.getElementById('timer').textContent = elapsed + 's';
+  }
+
+  function drawVisualizer() {
+    if (!analyser) return;
+    const data = new Uint8Array(analyser.frequencyBinCount);
+    analyser.getByteFrequencyData(data);
+
+    for (let i = 0; i < BAR_COUNT && i < data.length; i++) {
+      const h = Math.max(6, (data[i] / 255) * 60);
+      vizBars[i].style.height = h + 'px';
+    }
+
+    animFrame = requestAnimationFrame(drawVisualizer);
+  }
+
+  // ---- Analyzing ----
+  const analyzingSteps = [
+    ['🧪', 'Sniffing your sample...', 'Analyzing molecular composition'],
+    ['🔬', 'Detecting toot frequency...', 'Running spectral fart analysis'],
+    ['🧬', 'Matching gas signature...', 'Cross-referencing with 10,000+ cities'],
+    ['🌍', 'Locating your soul city...', 'Almost there...'],
+  ];
+
+  function showAnalyzing() {
+    document.getElementById('recordSection').style.display = 'none';
+    document.getElementById('timer').textContent = '';
+    const sec = document.getElementById('analyzingSection');
+    sec.classList.add('active');
+
+    let step = 0;
+    function nextStep() {
+      if (step >= analyzingSteps.length) {
+        sec.classList.remove('active');
+        showResults();
+        return;
+      }
+      const [emoji, text, sub] = analyzingSteps[step];
+      sec.querySelector('.analyzing-emoji').textContent = emoji;
+      document.getElementById('analyzingText').textContent = text;
+      document.getElementById('analyzingSub').textContent = sub;
+      step++;
+      setTimeout(nextStep, 1200);
+    }
+    nextStep();
+  }
+
+  // ---- Result data ----
+  const fartNames = [
+    'The Silent Assassin', 'The Thunderclap', 'The Velvet Whisper',
+    'The Brass Tuba', 'The Sneaky Pete', 'The Morning Glory',
+    'The Bubble Wrap', 'The Fog Horn', 'The Squeaky Door',
+    'The Rumble in the Jungle', 'The Gentle Breeze', 'The Grand Finale',
+    'The Plot Twist', 'The Overachiever', 'The Drama Queen',
+    'The Lingerer', 'The Drive-By', 'The Earthquake',
+  ];
+
+  const ratingTitles = [
+    [9.5, 'Legendary. Museumworthy. A Masterpiece. 🏆'],
+    [8.5, 'Outstanding. Your gut is an artist. 🎨'],
+    [7.5, 'Impressive. Solid technique. 👏'],
+    [6.5, 'Above Average. Room for growth. 📈'],
+    [5.0, 'Mid. Like elevator music but worse. 😐'],
+    [3.0, 'Needs Work. Was that even a fart? 🤔'],
+    [0.0, 'Participation Trophy. At least you tried. 🏅'],
+  ];
+
+  const praises = [
+    'Exquisite resonance. The kind of fart that changes lives.',
+    'A bold statement. Your colon has something important to say.',
+    'Perfect pitch. You could join a flatulence orchestra.',
+    'The confidence! The poise! A true power move.',
+    'Rich undertones with a surprising finish. Chef\'s kiss.',
+    'Such warmth and character. Your gut has a beautiful soul.',
+    'A fart of great emotional depth. Truly moving.',
+    'World-class vibrato. Pavarotti would be proud.',
+    'The acoustics were phenomenal. Your body is a concert hall.',
+    'Rare vintage. This fart has notes of ambition and audacity.',
+  ];
+
+  const roasts = [
+    'Smells like you ate regret for dinner.',
+    'Your fart just lowered the property value of this room.',
+    'Even your phone considered calling 911.',
+    'That wasn\'t a fart, that was a cry for help from your intestines.',
+    'Somewhere, a skunk just felt inadequate.',
+    'My condolences to anyone within a 5-meter radius.',
+    'Your gut clearly has unresolved issues.',
+    'That fart has more drama than a reality TV show.',
+    'NASA detected that from orbit. Not a compliment.',
+    'Your fart just violated the Geneva Convention.',
+    'I\'ve smelled better things at a sewage plant tour.',
+    'Even the flies left the chat.',
+  ];
+
+  const cities = [
+    { name: 'Paris', emoji: '🗼', reasons: [
+      'Your fart has that certain je ne sais quoi — sophisticated yet unapologetically stinky, like a fine cheese.',
+      'Elegant, dramatic, and leaves a lasting impression. Very Parisian energy.',
+    ]},
+    { name: 'Mumbai', emoji: '🇮🇳', reasons: [
+      'Spicy, chaotic, and full of character. Your fart has the energy of a Mumbai local train at rush hour.',
+      'Bold, unapologetic, and with layers of complexity — just like Mumbai street food.',
+    ]},
+    { name: 'Tokyo', emoji: '🗼', reasons: [
+      'Precise, efficient, and surprisingly high-tech. Your fart is basically a bullet train of gas.',
+      'Compact yet powerful, with unexpected depth — like a Tokyo capsule hotel for your nose.',
+    ]},
+    { name: 'New York', emoji: '🗽', reasons: [
+      'Loud, brash, and impossible to ignore. Your fart has big NYC energy.',
+      'It\'s giving Wall Street aggression meets subway ventilation.',
+    ]},
+    { name: 'Bangkok', emoji: '🛕', reasons: [
+      'Warm, aromatic, and hits you when you least expect it. Very Bangkok night market energy.',
+      'A sensory overload that\'s somehow addictive. Your fart is pad thai for the nose.',
+    ]},
+    { name: 'Rio de Janeiro', emoji: '🏖️', reasons: [
+      'Passionate, explosive, and it makes you want to dance. Carnival in gaseous form.',
+      'Your fart has samba rhythm and beach vibes. Chaotic but beautiful.',
+    ]},
+    { name: 'London', emoji: '🎡', reasons: [
+      'Dry, understated, and politely devastating. A very British fart indeed.',
+      'Your fart queued patiently before arriving and then ruined everyone\'s day with grace.',
+    ]},
+    { name: 'Istanbul', emoji: '🕌', reasons: [
+      'A bridge between two worlds — silent yet deadly. East meets West in your colon.',
+      'Rich, layered, and steeped in history. Your fart is a bazaar of aromas.',
+    ]},
+    { name: 'Mexico City', emoji: '🌮', reasons: [
+      'Fiery, festive, and it brought the whole neighborhood together (against their will).',
+      'Your fart has the warmth of street tacos and the kick of ghost pepper salsa.',
+    ]},
+    { name: 'Berlin', emoji: '🇩🇪', reasons: [
+      'Industrial, underground, and goes on way longer than expected. Very techno.',
+      'Efficient, no-nonsense, and strangely avant-garde. Your fart belongs in a gallery.',
+    ]},
+    { name: 'Dubai', emoji: '🏙️', reasons: [
+      'Over the top, extra, and somehow luxurious. Your fart drives a gold-plated sports car.',
+      'Flashy and impossible to ignore. Your fart just bought a penthouse in the Burj Khalifa.',
+    ]},
+    { name: 'Amsterdam', emoji: '🌷', reasons: [
+      'Free-spirited, chill, and smells like it\'s been on a journey of self-discovery.',
+      'Laid back, tolerant, and surprisingly fragrant. Your fart rides a bicycle.',
+    ]},
+    { name: 'Sydney', emoji: '🦘', reasons: [
+      'Breezy, outdoorsy, and smells like it just came from the beach. Good vibes only.',
+      'Your fart has surfer energy — relaxed arrival, but it hits like a wave.',
+    ]},
+    { name: 'Seoul', emoji: '🇰🇷', reasons: [
+      'Trendy, well-produced, and K-pop levels of dramatic. Your fart has a fan base.',
+      'Perfectly packaged, aesthetically pleasing (somehow?), and went viral instantly.',
+    ]},
+    { name: 'Marrakech', emoji: '🕌', reasons: [
+      'Exotic, aromatic, and leaves you slightly disoriented — like getting lost in the souks.',
+      'Warm, spiced, and full of mystery. Your fart is a magic carpet ride for the senses.',
+    ]},
+    { name: 'Buenos Aires', emoji: '🇦🇷', reasons: [
+      'Passionate, dramatic, and it tangos between silent and deadly. Olé!',
+      'Your fart has the soul of a tango dancer — intense, emotional, and unforgettable.',
+    ]},
+  ];
+
+  // ---- Show results ----
+  function showResults() {
+    const rating = (Math.random() * 4 + 6).toFixed(1); // 6.0 - 10.0 skewed high for fun
+    const fartName = fartNames[Math.floor(Math.random() * fartNames.length)];
+    const praise = praises[Math.floor(Math.random() * praises.length)];
+    const roast = roasts[Math.floor(Math.random() * roasts.length)];
+    const city = cities[Math.floor(Math.random() * cities.length)];
+    const reason = city.reasons[Math.floor(Math.random() * city.reasons.length)];
+
+    let title = '';
+    for (const [threshold, t] of ratingTitles) {
+      if (rating >= threshold) { title = t; break; }
+    }
+
+    document.getElementById('fartName').textContent = '✨ ' + fartName + ' ✨';
+    document.getElementById('ratingScore').textContent = rating + '/10';
+    document.getElementById('ratingTitle').textContent = title;
+    document.getElementById('praiseText').textContent = praise;
+    document.getElementById('roastText').textContent = roast;
+    document.getElementById('cityEmoji').textContent = city.emoji;
+    document.getElementById('cityName').textContent = city.name;
+    document.getElementById('cityReason').textContent = reason;
+
+    // Store for sharing
+    window.__lastResult = { fartName, rating, city: city.name, reason };
+
+    document.getElementById('resultsSection').classList.add('active');
+  }
+
+  // ---- Reset ----
+  function resetAll() {
+    document.getElementById('resultsSection').classList.remove('active');
+    document.getElementById('recordSection').style.display = '';
+    document.getElementById('timer').textContent = '';
+    document.getElementById('errorMsg').classList.remove('active');
+  }
+
+  // ---- Share ----
+  function shareResult() {
+    const r = window.__lastResult;
+    if (!r) return;
+    const text = `💨 My fart scored ${r.rating}/10 and my Soul City is ${r.city}!\n\n"${r.reason}"\n\nFind your fart soul city 👉`;
+
+    if (navigator.share) {
+      navigator.share({ title: 'My Fart Soul City', text });
+    } else {
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.querySelector('.share-btn');
+        btn.textContent = '✅ Copied to clipboard!';
+        setTimeout(() => btn.textContent = '📤 Share My Soul City', 2000);
+      });
+    }
+  }
+</script>
+
+</body>
+</html>
